@@ -3,11 +3,13 @@ define('GOODREADS_BASE_URL', 'http://www.goodreads.com');
 include('./simple_html_dom.php');
 include('./gr_creds.php');
 
+$page = isset($_GET['page']) ? (int)$_GET['page'] : (!empty($argv[1]) ? (int)$argv[1] : NULL);
 
 if (goodreads_login($gr_un, $gr_pw)) {
-  goodreads_process_giveaways();
+  goodreads_process_giveaways($page);
 }
-_goodreads_curl('https://www.goodreads.com/', array(), TRUE);
+_goodreads_curl('http://www.goodreads.com/', array(), TRUE);
+unlink(getcwd() . '/gr.tmp');
 
 
 function goodreads_login($u, $p) {
@@ -45,6 +47,7 @@ function goodreads_login($u, $p) {
   if (!_goodreads_is_logged_in($output)) {
     die ('Failed to login (could not find profile link)');
   }
+  echo "Logged In\n";
   //echo $output;
   return TRUE;
 }
@@ -62,22 +65,26 @@ function _goodreads_is_logged_in($output) {
   return TRUE;
 }
 
-function goodreads_process_giveaways() {
-  $page = 1;
+function goodreads_process_giveaways($page = NULL) {
+  if (!$page) $page = 1;
   $baseurl = 'http://www.goodreads.com/giveaway?sort=recently_listed&tab=recently_listed';
   $total_processed = $total_found = 0;
   do {
     $processed = $found = 0;
+    echo "Page {$page}:";
     $output = _goodreads_curl($baseurl . '&page=' . $page++);
     $html = str_get_html($output);
-    foreach ($html->find('div[class=giveaway] a[href^=/giveaway/enter_choose_address]') as $giveaway) {
+    $giveaways = $html->find('div[class=giveaway] a[href^=/giveaway/enter_choose_address]');
+    $total = count($giveaways);
+    echo $total . " giveaways\n";
+    foreach ($giveaways as $giveaway) {
       $found++;
       if (_goodreads_select_address_and_process_giveaway(GOODREADS_BASE_URL . $giveaway->href)) {
         $processed++;
-        echo "Processed: {$giveaway->href}\n";
+        echo "Processed $page-$found/$total: {$giveaway->href}\n";
       }
       else {
-        echo "FAILED: {$giveaway->href}\n";
+        echo "FAILED $page-$found/$total: {$giveaway->href}\n";
       }
     }
 
@@ -142,7 +149,7 @@ function _goodreads_curl($url, $default_headers = array(), $close = FALSE) {
   $headers[CURLOPT_CONNECTTIMEOUT] = 10;
   $headers[CURLOPT_TIMEOUT] = 30;
   $headers[CURLOPT_FOLLOWLOCATION] = TRUE;
-  $cookie_file = 'C:\wamp\www\projects\gr\gr.tmp';
+  $cookie_file = getcwd() . '/gr.tmp';
   $headers[CURLOPT_COOKIEFILE] = $cookie_file;
   $headers[CURLOPT_COOKIEJAR] = $cookie_file;
 
