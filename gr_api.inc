@@ -1,8 +1,8 @@
 <?php
 
 define('GOODREADS_BASE_URL', 'http://www.goodreads.com');
-include('./simple_html_dom.php');
-include('./gr_creds.php');
+include('simple_html_dom.php');
+include('gr_creds.php');
 
 /**
  * Log in to goodreads.
