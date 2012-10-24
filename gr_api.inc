@@ -40,9 +40,7 @@ function goodreads_login($u, $p) {
   $headers[CURLOPT_POST] = TRUE;
   $headers[CURLOPT_POSTFIELDS] = http_build_query($values);
   $output = _goodreads_curl($url, $headers);
-  if ($gr_debug) {
-    file_put_contents($gr_debug . 'login.html', $output);
-  }
+  _goodreads_debug('login.html', $output);
   if (!_goodreads_is_logged_in($output)) {
     die ('Failed to login (could not find profile link)');
   }
@@ -136,6 +134,6 @@ function _goodreads_debug_setup() {
 function _goodreads_debug($filename, $output) {
   global $gr_debug;
   if ($gr_debug) {
-    file_put_contents($gr_debug . 'giveawaypage-' . $page . '.html', $output);
+    file_put_contents($gr_debug . $filename, $output);
   }
 }
