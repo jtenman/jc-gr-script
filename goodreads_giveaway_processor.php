@@ -5,7 +5,7 @@
  * php goodreads_giveaway_processor.php 2
  * php goodreads_giveaway_processor.php 1 ending_soon
  */
-include('./gr_api.inc');
+include('gr_api.inc');
 
 $page = isset($_GET['page']) ? (int)$_GET['page'] : (!empty($argv[1]) ? (int)$argv[1] : NULL);
 $gr_tab = isset($_GET['tab']) ? (int)$_GET['tab'] : (!empty($argv[2]) ? $argv[2] : 'recently_listed');
