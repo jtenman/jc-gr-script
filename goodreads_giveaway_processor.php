@@ -5,6 +5,7 @@
  * php goodreads_giveaway_processor.php 2
  * php goodreads_giveaway_processor.php 1 ending_soon
  */
+
 include('gr_api.inc');
 
 $page = isset($_GET['page']) ? (int)$_GET['page'] : (!empty($argv[1]) ? (int)$argv[1] : NULL);
@@ -27,11 +28,13 @@ function goodreads_process_giveaways($page = NULL) {
     echo "Page {$page}:";
     $output = _goodreads_curl($baseurl . '&page=' . $page);
     _goodreads_debug('giveawaypage-' . $page . '.html', $output);
-    $html = str_get_html($output);
-    $giveaways = $html->find('div[class=actions] a[href^=/giveaway/enter_choose_address]');
+    //$html = str_get_html($output);
+    //$giveaways = $html->find('div[class=actions] a[href^=/giveaway/enter_choose_address]');
+    $giveaways = goodreads_api_get_links($output);
     $total = count($giveaways);
     echo $total . " giveaways\n";
     foreach ($giveaways as $giveaway) {
+      $giveaway = (object) array('href' => $giveaway);
       $found++;
       if (_goodreads_select_address_and_process_giveaway(GOODREADS_BASE_URL . $giveaway->href)) {
         $processed++;
@@ -53,19 +56,28 @@ function goodreads_process_giveaways($page = NULL) {
 
 function _goodreads_select_address_and_process_giveaway($url) {
   $output = _goodreads_curl($url);
-  _goodreads_debug('choose_address_' . basename($url) . '.html', $output);
-  $html = str_get_html($output);
-  $addresses = $html->find('div[id=addresses] a[href^=/giveaway/enter_choose_address]');
+  _goodreads_debug('choose_address_' . basename($url) . '.html', $output . '<pre>' . $url . '</pre>');
+  //_goodreads_debug('choose_address_' . basename($url) . '.html', $output);
+  //$html = str_get_html($output);
+  //$addresses = $html->find('div[id=addresses] a[href^=/giveaway/enter_choose_address]');
+  $addresses = goodreads_api_get_links($output);
 
   if (empty($addresses)) {
     return FALSE;
   }
   $address = reset($addresses);
+  $address = (object) array('href' => $address);
 
   $headers = array();
   $headers[CURLOPT_POST] = TRUE;
+  $values = array(
+    '_method' => 'post',
+    'authenticity_token' => goodreads_api_get_authenticity_token($output),
+  );
+  $headers[CURLOPT_POSTFIELDS] = http_build_query($values);
+  $headers[CURLOPT_HTTPHEADER] = array('Content-Length: ' . strlen($headers[CURLOPT_POSTFIELDS]), 'Content-Type:application/x-www-form-urlencoded');
   $output = _goodreads_curl(GOODREADS_BASE_URL . $address->href, $headers);
-  _goodreads_debug('entry_form_' . basename($url) . '.html', $output);
+  _goodreads_debug('entry_form_' . basename($url) . '.html', $output . '<pre>' . $address->href . print_r($values, TRUE) . '</pre>');
 
   $html = str_get_html($output);
   $form = $html->find('form[name=entry_form]');
@@ -74,14 +86,17 @@ function _goodreads_select_address_and_process_giveaway($url) {
     return FALSE;
     die('Could not find the entry_form form.');
   }
+  $values = array();
   // Add in the hidden values.
   foreach ($form->find('input[type=hidden]') as $input) {
     $values[$input->name] = $input->value;
   }
-  $values['commit'] = 1;
+  $values['terms'] = 1;
+  $values['commit'] = 'enter to win';
   $headers = array();
   $headers[CURLOPT_POST] = TRUE;
   $headers[CURLOPT_POSTFIELDS] = http_build_query($values);
+  $headers[CURLOPT_REFERER] = GOODREADS_BASE_URL . $address->href;
 
   // Process actually submitting the final form.
   $output = _goodreads_curl(GOODREADS_BASE_URL . $form->action, $headers);
@@ -91,5 +106,3 @@ function _goodreads_select_address_and_process_giveaway($url) {
   $processed = $html->find('div[id="header_notice_container"] div[class="noticeBox"]');
   return !empty($processed);
 }
-
-
