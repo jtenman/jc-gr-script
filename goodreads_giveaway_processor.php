@@ -53,7 +53,8 @@ function goodreads_process_giveaways($page = NULL) {
 
 function _goodreads_select_address_and_process_giveaway($url) {
   $output = _goodreads_curl($url);
-  _goodreads_debug('choose_address_' . basename($url) . '.html', $output);
+  _goodreads_debug('choose_address_' . basename($url) . '.html', $output . '<pre>' . $url . '</pre>');
+  //_goodreads_debug('choose_address_' . basename($url) . '.html', $output);
   $html = str_get_html($output);
   $addresses = $html->find('div[id=addresses] a[href^=/giveaway/enter_choose_address]');
 
@@ -64,8 +65,14 @@ function _goodreads_select_address_and_process_giveaway($url) {
 
   $headers = array();
   $headers[CURLOPT_POST] = TRUE;
+  $values = array(
+    '_method' => 'post',
+    'authenticity_token' => goodreads_api_get_authenticity_token($output),
+  );
+  $headers[CURLOPT_POSTFIELDS] = http_build_query($values);
+  $headers[CURLOPT_REFERER] = $url;
   $output = _goodreads_curl(GOODREADS_BASE_URL . $address->href, $headers);
-  _goodreads_debug('entry_form_' . basename($url) . '.html', $output);
+  _goodreads_debug('entry_form_' . basename($url) . '.html', $output . '<pre>' . $address->href . print_r($values, TRUE) . '</pre>');
 
   $html = str_get_html($output);
   $form = $html->find('form[name=entry_form]');
@@ -78,10 +85,12 @@ function _goodreads_select_address_and_process_giveaway($url) {
   foreach ($form->find('input[type=hidden]') as $input) {
     $values[$input->name] = $input->value;
   }
-  $values['commit'] = 1;
+  $values['terms'] = 1;
+  $values['commit'] = 'enter to win';
   $headers = array();
   $headers[CURLOPT_POST] = TRUE;
   $headers[CURLOPT_POSTFIELDS] = http_build_query($values);
+  $headers[CURLOPT_REFERER] = GOODREADS_BASE_URL . $address->href;
 
   // Process actually submitting the final form.
   $output = _goodreads_curl(GOODREADS_BASE_URL . $form->action, $headers);
@@ -91,5 +100,3 @@ function _goodreads_select_address_and_process_giveaway($url) {
   $processed = $html->find('div[id="header_notice_container"] div[class="noticeBox"]');
   return !empty($processed);
 }
-
-

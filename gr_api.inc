@@ -1,6 +1,6 @@
 <?php
 
-define('GOODREADS_BASE_URL', 'http://www.goodreads.com');
+define('GOODREADS_BASE_URL', 'https://www.goodreads.com');
 include('simple_html_dom.php');
 include('gr_creds.php');
 
@@ -108,6 +108,15 @@ function _goodreads_curl($url, $default_headers = array(), $close = FALSE) {
     curl_close($ch);
     $ch = NULL;
   }
+}
+
+/**
+ * Get the giveaway links from the html.
+ */
+function goodreads_api_get_authenticity_token($output) {
+  $matches = array();
+  preg_match_all('/\<meta content=\"([^"]*)\".*name=\"csrf-token\"/', $output, $matches);
+  return $matches[1][0];
 }
 
 /**
